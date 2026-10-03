@@ -1598,21 +1598,14 @@ function renderReceiptSuccessModal(receipt, shop) {
 
   const viewUrl = getReceiptViewUrl(receipt.id || receipt.receipt_number);
   const shopName = shop ? shop.shop_name : 'QuickMart Superstore';
-  const itemSummary = (receipt.items || []).map(i => `• ${i.item_name} x ${i.quantity} = ₹${Number(i.total || 0).toFixed(2)}`).join('\n');
+  const custName = (receipt.customer_name && receipt.customer_name !== 'Walk-in Customer') ? `\n*Customer:* ${receipt.customer_name}` : '';
+  const itemSummary = (receipt.items || []).map(i => `• ${i.item_name} x ${i.quantity}`).join('\n');
   const waText = 
-`🧾 *${shopName}*
-*Receipt No:* ${receipt.receipt_number}
-*Date:* ${new Date(receipt.created_at).toLocaleDateString()} ${new Date(receipt.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+`🧾 *${shopName}*${custName}
 --------------------------------
 ${itemSummary}
 --------------------------------
-*Total Paid:* ₹${Number(receipt.total_amount || 0).toFixed(2)} (${receipt.payment_mode})
-*Payment Status:* PAID ✅
-
-🌐 *View Digital Receipt:*
-${viewUrl}
-
-Thank you for shopping with us! 🙏`;
+*Total Amount:* ₹${Number(receipt.total_amount || 0).toFixed(2)}`;
 
   // Populate modal details
   const numEl = document.getElementById('modal-receipt-num');
@@ -1761,6 +1754,17 @@ async function renderCustomerDigitalReceipt(receiptId) {
     if (customerEl) {
       customerEl.style.display = 'block';
       const viewUrl = window.location.href;
+      
+      const shopName = receipt.shopkeeper ? receipt.shopkeeper.shop_name : 'QuickMart Superstore';
+      const custName = (receipt.customer_name && receipt.customer_name !== 'Walk-in Customer') ? `\n*Customer:* ${receipt.customer_name}` : '';
+      const itemSummary = (receipt.items || []).map(i => `• ${i.item_name} x ${i.quantity}`).join('\n');
+      const waText = 
+`🧾 *${shopName}*${custName}
+--------------------------------
+${itemSummary}
+--------------------------------
+*Total Amount:* ₹${Number(receipt.total_amount || 0).toFixed(2)}`;
+
       customerEl.innerHTML = `
         <div style="max-width: 440px; margin: 2rem auto;">
           <div style="text-align: center; margin-bottom: 1.5rem;">
@@ -1770,6 +1774,18 @@ async function renderCustomerDigitalReceipt(receiptId) {
           </div>
 
           ${generateThermalSlipHtml(receipt, receipt.shopkeeper, viewUrl)}
+
+          <!-- NEW: Customer WhatsApp Input -->
+          <div style="background: rgba(0,0,0,0.2); padding: 1.25rem; border-radius: 8px; margin-top: 1.5rem; text-align: center;" class="no-print">
+            <h4 style="margin-bottom: 0.5rem; color: #fff;">Send Receipt to WhatsApp</h4>
+            <p style="font-size: 0.8rem; color: var(--text-muted); margin-bottom: 1rem;">Enter your WhatsApp number to receive a copy of this bill.</p>
+            <div style="display: flex; gap: 0.5rem; justify-content: center; flex-wrap: wrap;">
+              <input type="tel" id="customer-view-wa-input" class="form-input" placeholder="Your WhatsApp No." style="max-width: 220px; flex: 1;" maxlength="10">
+              <button type="button" id="customer-view-btn-wa" class="btn btn-whatsapp">
+                <span>📲</span> Send
+              </button>
+            </div>
+          </div>
 
           <div style="display: flex; gap: 1rem; justify-content: center; margin-top: 1.5rem;" class="no-print">
             <button type="button" class="btn btn-primary" onclick="window.print()">
@@ -1787,6 +1803,25 @@ async function renderCustomerDigitalReceipt(receiptId) {
         const qrEl = document.getElementById('thermal-slip-qr');
         if (qrEl) {
           renderQRCode(qrEl, viewUrl, 100);
+        }
+
+        // Attach WhatsApp event handler
+        const waBtn = document.getElementById('customer-view-btn-wa');
+        const waInput = document.getElementById('customer-view-wa-input');
+        if (waBtn && waInput) {
+          // Pre-fill if number was provided during checkout
+          if (receipt.customer_phone && receipt.customer_phone !== 'Not Provided') {
+            waInput.value = receipt.customer_phone;
+          }
+          waBtn.onclick = () => {
+             const waNum = waInput.value.trim();
+             if (!waNum || waNum.length < 10) {
+               showToast('Please enter a valid 10-digit WhatsApp number.', 'error');
+               return;
+             }
+             const targetUrl = getWhatsAppUrl(waNum, waText);
+             window.open(targetUrl, '_blank');
+          };
         }
       }, 100);
     }
@@ -1921,21 +1956,15 @@ window.resendWhatsApp = function(receiptId) {
   const shop = getCurrentShop();
   const shopName = shop ? shop.shop_name : 'Tap Receipt Store';
   const viewUrl = getReceiptViewUrl(receipt.id || receipt.receipt_number);
-  const itemSummary = (receipt.items || []).map(i => `• ${i.item_name} x ${i.quantity} = ₹${Number(i.total || 0).toFixed(2)}`).join('\n');
+  const custName = (receipt.customer_name && receipt.customer_name !== 'Walk-in Customer') ? `\n*Customer:* ${receipt.customer_name}` : '';
+  const itemSummary = (receipt.items || []).map(i => `• ${i.item_name} x ${i.quantity}`).join('\n');
 
   const waText = 
-`🧾 *${shopName}*
-*Receipt No:* ${receipt.receipt_number}
-*Date:* ${new Date(receipt.created_at).toLocaleDateString()}
+`🧾 *${shopName}*${custName}
 --------------------------------
 ${itemSummary}
 --------------------------------
-*Total Paid:* ₹${Number(receipt.total_amount || 0).toFixed(2)} (${receipt.payment_mode})
-
-🌐 *Digital Receipt Link:*
-${viewUrl}
-
-Thank you for shopping with us! 🙏`;
+*Total Amount:* ₹${Number(receipt.total_amount || 0).toFixed(2)}`;
 
   const waUrl = getWhatsAppUrl(receipt.customer_phone, waText);
   window.open(waUrl, '_blank');
