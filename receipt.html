@@ -47,6 +47,13 @@
   <!-- Container for Customer Digital Receipt Mode (?view=123) -->
   <div id="customer-view-container" style="display: none;"></div>
 
+  <!-- Hide app UI if viewing receipt -->
+  <script>
+    if (window.location.search.includes('data=') || window.location.search.includes('view=')) {
+      document.write('<style>.navbar, #pos-terminal-container { display: none !important; } body { background: var(--bg-main) !important; }</style>');
+    }
+  </script>
+
   <!-- Container for POS Billing Terminal Mode (Default) -->
   <main class="container" id="pos-terminal-container">
 
